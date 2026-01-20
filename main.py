@@ -2,6 +2,7 @@ from src.loaders.pdf_loader import load_pdfs_from_directory
 from src.processing.chunker import chunk_text
 from src.embeddings.hf_embeddings import HuggingFaceEmbeddingModel
 from src.vectorstore.pinecone_store import PineconeVectorStore
+from src.llm.answer_generator import AnswerGenerator
 
 def main()->None:
     pdf_texts=load_pdfs_from_directory("data/pdfs")
@@ -25,17 +26,29 @@ def main()->None:
     vector_store=PineconeVectorStore(dimension=len(embeddings[0]))
     vector_store.upsert_vectors(embeddings, chunks)
 
-    query="What is attention mechanism?"
+    query="What is the policy about incentive compensation recovery?"
     query_embedding=embedder.embed_texts([query])[0]
 
-    results=vector_store.query(query_embedding=query_embedding)
+    results=vector_store.query(query_embedding=query_embedding, top_k=3)
     print(results)
 
-    for match in results["matches"]:
-        print(match["metadata"]["text"][:300])
-        print("-"*50)
+    # for match in results["matches"]:
+    #     print(match["metadata"]["text"][:300])
+    #     print("-"*50)
+    
+    contexts=[match["metadata"]["text"] for match in results["matches"]]
+    
+    llm = AnswerGenerator()
+    
+    answer=llm.generate_answer(query, contexts=contexts)
+    
+    print("Final answer: ")
+    print(answer)
 
+    # User asks a question, question is embedded, pinecone finds relevant chunks, chunks become context, context + question go into prompt, llm generates answer from docs.
+    
 if __name__ == "__main__":
     main()
 
 #  the above if statement is used so that the main() function runs only when this file is executed directly and not when imported
+
